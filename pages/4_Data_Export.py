@@ -11,26 +11,18 @@ import base64
 from utils.data_manager import DataManager
 from utils.statistics import StatisticsCalculator
 from utils.visualization import ChartGenerator
-from utils.theme_manager import setup_theme_selector, get_theme_mode
 
 st.set_page_config(page_title="Data Export", page_icon="📥", layout="wide")
-
-# Apply theme
-with st.sidebar:
-    setup_theme_selector()
 
 # Initialize utilities
 @st.cache_resource
 def get_utilities():
     data_manager = DataManager()
     stats_calculator = StatisticsCalculator()
-    return data_manager, stats_calculator
+    chart_generator = ChartGenerator()
+    return data_manager, stats_calculator, chart_generator
 
-def get_chart_generator():
-    theme = 'dark' if get_theme_mode() == 'Escuro' else 'light'
-    return ChartGenerator(theme)
-
-data_manager, stats_calculator = get_utilities()
+data_manager, stats_calculator, chart_generator = get_utilities()
 
 st.title("📥 Data Export & Reports")
 st.markdown("Export process data and generate comprehensive reports for analysis and documentation.")

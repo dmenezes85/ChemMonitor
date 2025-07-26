@@ -8,26 +8,18 @@ from datetime import datetime, timedelta
 from utils.data_manager import DataManager
 from utils.visualization import ChartGenerator
 from utils.statistics import StatisticsCalculator
-from utils.theme_manager import setup_theme_selector, get_theme_mode
 
 st.set_page_config(page_title="Historical Analysis", page_icon="📈", layout="wide")
-
-# Apply theme
-with st.sidebar:
-    setup_theme_selector()
 
 # Initialize utilities
 @st.cache_resource
 def get_utilities():
     data_manager = DataManager()
+    chart_generator = ChartGenerator()
     stats_calculator = StatisticsCalculator()
-    return data_manager, stats_calculator
+    return data_manager, chart_generator, stats_calculator
 
-def get_chart_generator():
-    theme = 'dark' if get_theme_mode() == 'Escuro' else 'light'
-    return ChartGenerator(theme)
-
-data_manager, stats_calculator = get_utilities()
+data_manager, chart_generator, stats_calculator = get_utilities()
 
 st.title("📈 Historical Data Analysis")
 st.markdown("Analyze trends, patterns, and correlations in your chemical process data.")

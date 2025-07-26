@@ -9,53 +9,20 @@ from datetime import datetime
 class ChartGenerator:
     """Generates interactive charts and visualizations for chemical process data."""
     
-    def __init__(self, theme='light'):
+    def __init__(self):
         """Initialize the chart generator with default styling."""
-        self.theme = theme
         self.default_colors = [
             '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
             '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'
         ]
         
-        # Theme-based layout configuration
-        if theme == 'dark':
-            self.default_layout = {
-                'template': 'plotly_dark',
-                'paper_bgcolor': '#0E1117',
-                'plot_bgcolor': '#0E1117',
-                'font': {'size': 12, 'color': '#FAFAFA'},
-                'title_font': {'size': 16, 'color': '#FAFAFA'},
-                'showlegend': True,
-                'hovermode': 'x unified'
-            }
-        else:
-            self.default_layout = {
-                'template': 'plotly_white',
-                'font': {'size': 12},
-                'title_font': {'size': 16},
-                'showlegend': True,
-                'hovermode': 'x unified'
-            }
-    
-    def set_theme(self, theme):
-        """Update the theme for chart generation."""
-        self.theme = theme
-        if theme == 'dark':
-            self.default_layout.update({
-                'template': 'plotly_dark',
-                'paper_bgcolor': '#0E1117',
-                'plot_bgcolor': '#0E1117',
-                'font': {'size': 12, 'color': '#FAFAFA'},
-                'title_font': {'size': 16, 'color': '#FAFAFA'}
-            })
-        else:
-            self.default_layout = {
-                'template': 'plotly_white',
-                'font': {'size': 12},
-                'title_font': {'size': 16},
-                'showlegend': True,
-                'hovermode': 'x unified'
-            }
+        self.default_layout = {
+            'template': 'plotly_white',
+            'font': {'size': 12},
+            'title_font': {'size': 16},
+            'showlegend': True,
+            'hovermode': 'x unified'
+        }
     
     def create_line_chart(self, 
                          data: pd.DataFrame, 

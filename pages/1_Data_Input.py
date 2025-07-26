@@ -5,13 +5,8 @@ from datetime import datetime, timedelta
 import json
 import io
 from utils.data_manager import DataManager
-from utils.theme_manager import setup_theme_selector, get_theme_mode
 
 st.set_page_config(page_title="Data Input", page_icon="📝", layout="wide")
-
-# Apply theme
-with st.sidebar:
-    setup_theme_selector()
 
 # Initialize data manager
 @st.cache_resource
