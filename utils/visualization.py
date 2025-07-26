@@ -19,7 +19,7 @@ class ChartGenerator:
         self.default_layout = {
             'template': 'plotly_white',
             'font': {'size': 12},
-            'title': {'font': {'size': 16}},
+            'title_font': {'size': 16},
             'showlegend': True,
             'hovermode': 'x unified'
         }
@@ -63,7 +63,6 @@ class ChartGenerator:
                     x=x_column, 
                     y=y_column, 
                     color=color_column,
-                    title=title,
                     markers=show_markers
                 )
             else:
@@ -80,13 +79,14 @@ class ChartGenerator:
                     marker=dict(size=4) if show_markers else None
                 ))
             
-            # Update layout
-            fig.update_layout(
-                title=title,
-                xaxis_title=x_column.title(),
-                yaxis_title=y_title or y_column.title(),
-                **self.default_layout
-            )
+            # Create layout dict without conflicting title
+            layout_dict = dict(self.default_layout)
+            layout_dict.update({
+                'title': title,
+                'xaxis_title': x_column.title(),
+                'yaxis_title': y_title or y_column.title()
+            })
+            fig.update_layout(**layout_dict)
             
             # Add range selector for time series
             if 'timestamp' in x_column.lower() or 'time' in x_column.lower():
@@ -242,12 +242,14 @@ class ChartGenerator:
                     line=dict(color='red', width=2, dash='dash')
                 ))
             
-            fig.update_layout(
-                title=title,
-                xaxis_title=data.name.title() if data.name else "Value",
-                yaxis_title="Frequency",
-                **self.default_layout
-            )
+            # Create layout dict without conflicting title
+            layout_dict = dict(self.default_layout)
+            layout_dict.update({
+                'title': title,
+                'xaxis_title': data.name.title() if data.name else "Value",
+                'yaxis_title': "Frequency"
+            })
+            fig.update_layout(**layout_dict)
             
             return fig
             
@@ -288,11 +290,13 @@ class ChartGenerator:
                     marker_color=self.default_colors[0]
                 ))
             
-            fig.update_layout(
-                title=title,
-                yaxis_title=y_column.title(),
-                **self.default_layout
-            )
+            # Create layout dict without conflicting title
+            layout_dict = dict(self.default_layout)
+            layout_dict.update({
+                'title': title,
+                'yaxis_title': y_column.title()
+            })
+            fig.update_layout(**layout_dict)
             
             return fig
             

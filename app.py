@@ -119,7 +119,7 @@ def main_dashboard():
                         filtered_data, 'timestamp', 'temperature', 
                         "Temperature Over Time", "Temperature (°C)"
                     )
-                    st.plotly_chart(fig_temp, use_container_width=True)
+                    st.plotly_chart(fig_temp, use_container_width=True, key="temp_line_chart")
             
             with col2:
                 if 'pressure' in filtered_data.columns:
@@ -127,7 +127,7 @@ def main_dashboard():
                         filtered_data, 'timestamp', 'pressure', 
                         "Pressure Over Time", "Pressure (bar)"
                     )
-                    st.plotly_chart(fig_pressure, use_container_width=True)
+                    st.plotly_chart(fig_pressure, use_container_width=True, key="pressure_line_chart")
             
             # pH and Flow Rate charts
             col3, col4 = st.columns(2)
@@ -138,7 +138,7 @@ def main_dashboard():
                         filtered_data, 'timestamp', 'ph', 
                         "pH Level Over Time", "pH"
                     )
-                    st.plotly_chart(fig_ph, use_container_width=True)
+                    st.plotly_chart(fig_ph, use_container_width=True, key="ph_line_chart")
             
             with col4:
                 if 'flow_rate' in filtered_data.columns:
@@ -146,7 +146,7 @@ def main_dashboard():
                         filtered_data, 'timestamp', 'flow_rate', 
                         "Flow Rate Over Time", "Flow Rate (L/min)"
                     )
-                    st.plotly_chart(fig_flow, use_container_width=True)
+                    st.plotly_chart(fig_flow, use_container_width=True, key="flow_line_chart")
         
         with tab2:
             # Gauge charts for current values
@@ -158,14 +158,14 @@ def main_dashboard():
                     fig_temp_gauge = chart_generator.create_gauge_chart(
                         temp_val, "Temperature", "°C", 0, 200
                     )
-                    st.plotly_chart(fig_temp_gauge, use_container_width=True)
+                    st.plotly_chart(fig_temp_gauge, use_container_width=True, key="temp_gauge_chart")
                 
                 if 'ph' in current_data.columns:
                     ph_val = current_data['ph'].iloc[-1]
                     fig_ph_gauge = chart_generator.create_gauge_chart(
                         ph_val, "pH Level", "", 0, 14
                     )
-                    st.plotly_chart(fig_ph_gauge, use_container_width=True)
+                    st.plotly_chart(fig_ph_gauge, use_container_width=True, key="ph_gauge_chart")
             
             with col2:
                 if 'pressure' in current_data.columns:
@@ -173,14 +173,14 @@ def main_dashboard():
                     fig_pressure_gauge = chart_generator.create_gauge_chart(
                         pressure_val, "Pressure", "bar", 0, 10
                     )
-                    st.plotly_chart(fig_pressure_gauge, use_container_width=True)
+                    st.plotly_chart(fig_pressure_gauge, use_container_width=True, key="pressure_gauge_chart")
                 
                 if 'flow_rate' in current_data.columns:
                     flow_val = current_data['flow_rate'].iloc[-1]
                     fig_flow_gauge = chart_generator.create_gauge_chart(
                         flow_val, "Flow Rate", "L/min", 0, 100
                     )
-                    st.plotly_chart(fig_flow_gauge, use_container_width=True)
+                    st.plotly_chart(fig_flow_gauge, use_container_width=True, key="flow_gauge_chart")
         
         with tab3:
             # Distribution histograms
@@ -192,11 +192,11 @@ def main_dashboard():
             )
             
             if selected_params:
-                for param in selected_params:
+                for i, param in enumerate(selected_params):
                     fig_hist = chart_generator.create_histogram(
                         filtered_data[param], f"{param.title()} Distribution"
                     )
-                    st.plotly_chart(fig_hist, use_container_width=True)
+                    st.plotly_chart(fig_hist, use_container_width=True, key=f"hist_chart_{i}")
     
     else:
         st.info("No data available for the selected time range.")
