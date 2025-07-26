@@ -5,8 +5,13 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta
 from utils.data_manager import DataManager
 from utils.alert_system import AlertSystem
+from utils.theme_manager import setup_theme_selector, get_theme_mode
 
 st.set_page_config(page_title="Alerts Configuration", page_icon="🚨", layout="wide")
+
+# Apply theme
+with st.sidebar:
+    setup_theme_selector()
 
 # Initialize systems
 @st.cache_resource

@@ -11,6 +11,7 @@ from utils.data_manager import DataManager
 from utils.alert_system import AlertSystem
 from utils.visualization import ChartGenerator
 from utils.statistics import StatisticsCalculator
+from utils.theme_manager import setup_theme_selector, get_theme_mode
 
 # Page configuration
 st.set_page_config(
@@ -25,11 +26,15 @@ st.set_page_config(
 def initialize_systems():
     data_manager = DataManager()
     alert_system = AlertSystem()
-    chart_generator = ChartGenerator()
     stats_calculator = StatisticsCalculator()
-    return data_manager, alert_system, chart_generator, stats_calculator
+    return data_manager, alert_system, stats_calculator
 
-data_manager, alert_system, chart_generator, stats_calculator = initialize_systems()
+data_manager, alert_system, stats_calculator = initialize_systems()
+
+# Initialize chart generator with theme support
+def get_chart_generator():
+    theme = 'dark' if get_theme_mode() == 'Escuro' else 'light'
+    return ChartGenerator(theme)
 
 # Main dashboard
 def main_dashboard():
@@ -112,6 +117,7 @@ def main_dashboard():
         with tab1:
             # Temperature and Pressure charts
             col1, col2 = st.columns(2)
+            chart_generator = get_chart_generator()
             
             with col1:
                 if 'temperature' in filtered_data.columns:
@@ -221,6 +227,9 @@ def main_dashboard():
 with st.sidebar:
     st.title("Navigation")
     st.markdown("---")
+    
+    # Setup theme selector
+    setup_theme_selector()
     
     # System status
     st.subheader("System Status")
