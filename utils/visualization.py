@@ -685,3 +685,80 @@ class ChartGenerator:
         except Exception as e:
             print(f"Error creating dashboard summary chart: {e}")
             return self._create_empty_chart(f"Error: {str(e)}")
+    
+    def create_comparison_chart(self, data: pd.DataFrame, parameters: List[str], title: str = "Comparação de Parâmetros") -> go.Figure:
+        """
+        Create a comparison chart for multiple parameters.
+        
+        Args:
+            data: DataFrame containing the data
+            parameters: List of parameter names to compare
+            title: Chart title
+            
+        Returns:
+            go.Figure: Plotly figure object
+        """
+        try:
+            if data.empty or not parameters:
+                return self._create_empty_chart("Nenhum dado disponível para comparação")
+            
+            fig = go.Figure()
+            
+            # Normalize data for comparison (0-100 scale)
+            normalized_data = data.copy()
+            for param in parameters:
+                if param in data.columns:
+                    param_data = data[param].dropna()
+                    if len(param_data) > 0:
+                        min_val = param_data.min()
+                        max_val = param_data.max()
+                        if max_val != min_val:
+                            normalized_data[f'{param}_normalized'] = ((param_data - min_val) / (max_val - min_val)) * 100
+                        else:
+                            normalized_data[f'{param}_normalized'] = 50  # Middle value if no variation
+            
+            # Create comparison traces
+            x_data = data.index if 'timestamp' not in data.columns else data['timestamp']
+            
+            for i, param in enumerate(parameters):
+                if param in data.columns:
+                    normalized_col = f'{param}_normalized'
+                    if normalized_col in normalized_data.columns:
+                        fig.add_trace(go.Scatter(
+                            x=x_data,
+                            y=normalized_data[normalized_col],
+                            mode='lines',
+                            name=param.replace('_', ' ').title(),
+                            line=dict(width=2, color=self.default_colors[i % len(self.default_colors)]),
+                            hovertemplate=f"<b>{param.replace('_', ' ').title()}</b><br>" +
+                                        "Tempo: %{x}<br>" +
+                                        "Valor Normalizado: %{y:.1f}%<br>" +
+                                        f"Valor Real: %{{customdata:.3f}}<extra></extra>",
+                            customdata=data[param]
+                        ))
+            
+            # Add secondary y-axis for original values
+            fig.update_layout(
+                title=dict(text=title, font=dict(size=16, color='black')),
+                xaxis_title="Tempo",
+                yaxis_title="Valores Normalizados (%)",
+                yaxis=dict(range=[0, 100]),
+                template="plotly_white",
+                height=400,
+                showlegend=True,
+                hovermode='x unified',
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=1.02,
+                    xanchor="right",
+                    x=1
+                ),
+                **self.default_layout
+            )
+            
+            return fig
+            
+        except Exception as e:
+            print(f"Error creating comparison chart: {e}")
+            return self._create_empty_chart(f"Error: {str(e)}")

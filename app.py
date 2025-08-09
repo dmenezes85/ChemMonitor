@@ -1211,6 +1211,272 @@ def update_historical_analysis(active_tab, start_date, end_date, selected_params
                 ])
             ], className="shadow-sm")
             
+        elif active_tab == "autocorr":
+            # Autocorrelation analysis
+            from plotly.subplots import make_subplots
+            
+            if len(selected_params) == 0:
+                return dbc.Alert("Selecione pelo menos um parâmetro", color="info")
+            
+            fig = make_subplots(rows=len(selected_params), cols=1,
+                              subplot_titles=[param.replace('_', ' ').title() for param in selected_params],
+                              vertical_spacing=0.1)
+            
+            for i, param in enumerate(selected_params):
+                if param in historical_data.columns:
+                    data = historical_data[param].dropna()
+                    if len(data) > 10:
+                        # Calculate autocorrelation
+                        autocorr = [data.autocorr(lag=lag) for lag in range(min(50, len(data)//2))]
+                        lags = list(range(len(autocorr)))
+                        
+                        fig.add_scatter(x=lags, y=autocorr, mode='lines+markers',
+                                      name=f'{param} Autocorr', row=i+1, col=1)
+                        
+                        # Add significance bounds
+                        n = len(data)
+                        bound = 1.96 / (n**0.5)
+                        fig.add_hline(y=bound, line_dash="dash", line_color="red", 
+                                    opacity=0.5, row=i+1, col=1)
+                        fig.add_hline(y=-bound, line_dash="dash", line_color="red", 
+                                    opacity=0.5, row=i+1, col=1)
+            
+            fig.update_layout(height=300*len(selected_params), showlegend=False,
+                            title_text="Análise de Autocorrelação")
+            fig.update_xaxes(title_text="Lag")
+            fig.update_yaxes(title_text="Autocorrelação")
+            
+            return dbc.Card([
+                dbc.CardHeader("Análise de Autocorrelação"),
+                dbc.CardBody([dcc.Graph(figure=fig)])
+            ], className="shadow-sm")
+            
+        elif active_tab == "comparison":
+            # Parameter comparison
+            if len(selected_params) < 2:
+                return dbc.Alert("Selecione pelo menos dois parâmetros para comparação", color="info")
+            
+            # Create comparison chart
+            fig = chart_generator.create_comparison_chart(historical_data, selected_params)
+            
+            # Create comparison statistics
+            comparison_data = []
+            for i, param1 in enumerate(selected_params):
+                for param2 in selected_params[i+1:]:
+                    if param1 in historical_data.columns and param2 in historical_data.columns:
+                        data1 = historical_data[param1].dropna()
+                        data2 = historical_data[param2].dropna()
+                        
+                        if len(data1) > 0 and len(data2) > 0:
+                            # Calculate correlation
+                            corr = historical_data[[param1, param2]].corr().iloc[0, 1]
+                            
+                            comparison_data.append({
+                                'Parâmetro 1': param1.replace('_', ' ').title(),
+                                'Parâmetro 2': param2.replace('_', ' ').title(),
+                                'Correlação': f"{corr:.3f}",
+                                'Força da Correlação': 'Forte' if abs(corr) > 0.7 else 'Moderada' if abs(corr) > 0.3 else 'Fraca',
+                                'Média P1': f"{data1.mean():.3f}",
+                                'Média P2': f"{data2.mean():.3f}",
+                                'Razão Médias': f"{data1.mean()/data2.mean():.3f}" if data2.mean() != 0 else "N/A"
+                            })
+            
+            return dbc.Card([
+                dbc.CardHeader("Comparação entre Parâmetros"),
+                dbc.CardBody([
+                    dcc.Graph(figure=fig),
+                    html.Hr(),
+                    html.H5("Estatísticas de Comparação", className="mt-3"),
+                    dash_table.DataTable(
+                        data=comparison_data,
+                        columns=[{"name": i, "id": i} for i in comparison_data[0].keys()] if comparison_data else [],
+                        style_cell={'textAlign': 'center', 'fontSize': '12px'},
+                        style_header={'backgroundColor': 'rgb(230, 230, 230)', 'fontWeight': 'bold'}
+                    )
+                ])
+            ], className="shadow-sm")
+            
+        elif active_tab == "summary":
+            # Data summary
+            summary_stats = {
+                'total_records': len(historical_data),
+                'date_range': f"{historical_data['timestamp'].min().strftime('%d/%m/%Y %H:%M')} - {historical_data['timestamp'].max().strftime('%d/%m/%Y %H:%M')}" if 'timestamp' in historical_data.columns and not historical_data.empty else "N/A",
+                'parameters': len(selected_params),
+                'missing_data': historical_data[selected_params].isnull().sum().sum() if selected_params else 0
+            }
+            
+            # Quality metrics
+            quality_data = []
+            for param in selected_params:
+                if param in historical_data.columns:
+                    data = historical_data[param]
+                    missing_pct = (data.isnull().sum() / len(data)) * 100
+                    quality_data.append({
+                        'Parâmetro': param.replace('_', ' ').title(),
+                        'Registros Total': len(data),
+                        'Dados Válidos': data.count(),
+                        'Dados Ausentes': data.isnull().sum(),
+                        'Completude (%)': f"{100-missing_pct:.1f}%",
+                        'Valor Mínimo': f"{data.min():.3f}" if data.count() > 0 else "N/A",
+                        'Valor Máximo': f"{data.max():.3f}" if data.count() > 0 else "N/A",
+                        'Amplitude': f"{data.max() - data.min():.3f}" if data.count() > 0 else "N/A"
+                    })
+            
+            return dbc.Card([
+                dbc.CardHeader("Resumo dos Dados"),
+                dbc.CardBody([
+                    dbc.Row([
+                        dbc.Col([
+                            dbc.Card([
+                                dbc.CardBody([
+                                    html.H4(f"{summary_stats['total_records']:,}", className="text-primary"),
+                                    html.P("Total de Registros", className="text-muted")
+                                ])
+                            ], className="text-center")
+                        ], width=3),
+                        dbc.Col([
+                            dbc.Card([
+                                dbc.CardBody([
+                                    html.H4(f"{summary_stats['parameters']}", className="text-success"),
+                                    html.P("Parâmetros Selecionados", className="text-muted")
+                                ])
+                            ], className="text-center")
+                        ], width=3),
+                        dbc.Col([
+                            dbc.Card([
+                                dbc.CardBody([
+                                    html.H4(f"{summary_stats['missing_data']:,}", className="text-warning"),
+                                    html.P("Dados Ausentes", className="text-muted")
+                                ])
+                            ], className="text-center")
+                        ], width=3),
+                        dbc.Col([
+                            dbc.Card([
+                                dbc.CardBody([
+                                    html.H4("Alta", className="text-info"),
+                                    html.P("Qualidade dos Dados", className="text-muted")
+                                ])
+                            ], className="text-center")
+                        ], width=3)
+                    ], className="mb-4"),
+                    html.H5("Período Analisado", className="mb-3"),
+                    html.P(summary_stats['date_range'], className="text-muted mb-4"),
+                    html.H5("Qualidade por Parâmetro", className="mb-3"),
+                    dash_table.DataTable(
+                        data=quality_data,
+                        columns=[{"name": i, "id": i} for i in quality_data[0].keys()] if quality_data else [],
+                        style_cell={'textAlign': 'center', 'fontSize': '12px'},
+                        style_header={'backgroundColor': 'rgb(230, 230, 230)', 'fontWeight': 'bold'}
+                    )
+                ])
+            ], className="shadow-sm")
+            
+        elif active_tab == "anomalies":
+            # Anomaly detection
+            from scipy import stats
+            
+            anomaly_data = []
+            all_anomalies = []
+            
+            for param in selected_params:
+                if param in historical_data.columns:
+                    data = historical_data[param].dropna()
+                    if len(data) > 10:
+                        # Z-score method
+                        z_scores = np.abs(stats.zscore(data))
+                        z_anomalies = np.where(z_scores > 3)[0]
+                        
+                        # IQR method
+                        Q1 = data.quantile(0.25)
+                        Q3 = data.quantile(0.75)
+                        IQR = Q3 - Q1
+                        lower_bound = Q1 - 1.5 * IQR
+                        upper_bound = Q3 + 1.5 * IQR
+                        iqr_anomalies = data[(data < lower_bound) | (data > upper_bound)]
+                        
+                        anomaly_data.append({
+                            'Parâmetro': param.replace('_', ' ').title(),
+                            'Total de Dados': len(data),
+                            'Anomalias Z-Score': len(z_anomalies),
+                            'Anomalias IQR': len(iqr_anomalies),
+                            'Taxa de Anomalia (%)': f"{(len(z_anomalies)/len(data)*100):.2f}%",
+                            'Limite Inferior': f"{lower_bound:.3f}",
+                            'Limite Superior': f"{upper_bound:.3f}",
+                            'Valor Médio': f"{data.mean():.3f}"
+                        })
+                        
+                        # Collect anomalies for visualization
+                        for idx in z_anomalies:
+                            if idx < len(historical_data):
+                                timestamp = historical_data.iloc[idx]['timestamp'] if 'timestamp' in historical_data.columns else idx
+                                all_anomalies.append({
+                                    'timestamp': timestamp,
+                                    'parameter': param,
+                                    'value': data.iloc[idx],
+                                    'z_score': z_scores[idx]
+                                })
+            
+            # Create anomaly visualization
+            fig = go.Figure()
+            
+            for param in selected_params:
+                if param in historical_data.columns:
+                    data = historical_data[param].dropna()
+                    timestamps = historical_data['timestamp'] if 'timestamp' in historical_data.columns else range(len(data))
+                    
+                    # Plot normal data
+                    fig.add_trace(go.Scatter(
+                        x=timestamps[:len(data)],
+                        y=data,
+                        mode='lines',
+                        name=param.replace('_', ' ').title(),
+                        line=dict(width=2)
+                    ))
+                    
+                    # Highlight anomalies
+                    param_anomalies = [a for a in all_anomalies if a['parameter'] == param]
+                    if param_anomalies:
+                        anomaly_times = [a['timestamp'] for a in param_anomalies]
+                        anomaly_values = [a['value'] for a in param_anomalies]
+                        
+                        fig.add_trace(go.Scatter(
+                            x=anomaly_times,
+                            y=anomaly_values,
+                            mode='markers',
+                            name=f'{param} Anomalias',
+                            marker=dict(size=8, color='red', symbol='x'),
+                            showlegend=False
+                        ))
+            
+            fig.update_layout(
+                title="Detecção de Anomalias",
+                xaxis_title="Tempo",
+                yaxis_title="Valores",
+                template="plotly_white",
+                height=400,
+                hovermode='x unified'
+            )
+            
+            return dbc.Card([
+                dbc.CardHeader("Detecção de Anomalias"),
+                dbc.CardBody([
+                    dcc.Graph(figure=fig),
+                    html.Hr(),
+                    html.H5("Estatísticas de Anomalias", className="mt-3"),
+                    dash_table.DataTable(
+                        data=anomaly_data,
+                        columns=[{"name": i, "id": i} for i in anomaly_data[0].keys()] if anomaly_data else [],
+                        style_cell={'textAlign': 'center', 'fontSize': '12px'},
+                        style_header={'backgroundColor': 'rgb(230, 230, 230)', 'fontWeight': 'bold'}
+                    ),
+                    html.Div([
+                        html.H6("Métodos de Detecção:", className="mt-3"),
+                        html.P("• Z-Score: Identifica valores com desvio > 3 desvios padrão", className="mb-1"),
+                        html.P("• IQR: Identifica valores fora do intervalo Q1-1.5*IQR até Q3+1.5*IQR", className="mb-1")
+                    ], className="mt-3")
+                ])
+            ], className="shadow-sm")
+            
         else:
             return dbc.Alert("Análise em desenvolvimento", color="info")
             
