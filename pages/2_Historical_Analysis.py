@@ -81,7 +81,10 @@ with st.sidebar:
         help="Aggregate data to reduce noise and identify trends"
     )
 
-# Apply filters
+# Initialize analysis_data to avoid reference errors later
+analysis_data = pd.DataFrame()
+
+# Apply filters only if parameters are selected
 if selected_params:
     analysis_data = filtered_data[['timestamp'] + selected_params].copy()
     
