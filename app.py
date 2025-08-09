@@ -332,7 +332,26 @@ def create_data_input():
     latest_entry = current_data.iloc[-1] if not current_data.empty else None
     
     return dbc.Container([
-        html.H1("Entrada de Dados", className="mb-4"),
+        dbc.Row([
+            dbc.Col([
+                html.H1("Entrada de Dados", className="mb-0")
+            ], width=8),
+            dbc.Col([
+                dbc.ButtonGroup([
+                    dbc.Button([
+                        html.I(className="fas fa-info-circle me-1"),
+                        "Status"
+                    ], id="data-status-btn", color="info", size="sm"),
+                    dbc.Button([
+                        html.I(className="fas fa-trash me-1"),
+                        "Limpar Dados"
+                    ], id="clear-data-btn", color="danger", size="sm")
+                ], className="w-100")
+            ], width=4)
+        ], className="mb-4"),
+        
+        # Clear data output
+        html.Div(id="clear-data-output", className="mb-3"),
         
         # Current data status
         dbc.Row([
@@ -459,6 +478,10 @@ def create_data_input():
                     ]),
                     dbc.CardBody([
                         html.P("Gere dados simulados para testar o sistema:", className="text-muted"),
+                        dbc.Alert([
+                            html.I(className="fas fa-info-circle me-2"),
+                            "Novos dados serão ADICIONADOS aos existentes. Use 'Limpar Dados' para começar do zero."
+                        ], color="warning", className="mb-3"),
                         dbc.ButtonGroup([
                             dbc.Button([
                                 html.I(className="fas fa-clock me-2"),
@@ -484,6 +507,10 @@ def create_data_input():
                         "Simulação Avançada"
                     ]),
                     dbc.CardBody([
+                        dbc.Alert([
+                            html.I(className="fas fa-plus me-2"),
+                            "Simulação personalizada - dados serão adicionados aos existentes"
+                        ], color="info", className="mb-3"),
                         dbc.Row([
                             dbc.Col([
                                 dbc.Label("Tipo de Processo", className="fw-bold"),
@@ -1984,6 +2011,82 @@ def generate_reports(operational_clicks, stats_clicks, alerts_clicks):
             html.I(className="fas fa-exclamation-triangle me-2"),
             f"Erro ao gerar relatório: {str(e)}"
         ], color="danger", duration=5000)
+
+# Clear data callback
+@app.callback(
+    Output("clear-data-output", "children"),
+    [Input("clear-data-btn", "n_clicks")],
+    prevent_initial_call=True
+)
+def clear_all_data(n_clicks):
+    if n_clicks:
+        try:
+            # Clear all data
+            success = data_manager.clear_all_data()
+            
+            if success:
+                return dbc.Alert([
+                    html.I(className="fas fa-check-circle me-2"),
+                    "Todos os dados foram removidos com sucesso! Agora você pode gerar novos dados sem sobreposição."
+                ], color="success", duration=5000)
+            else:
+                return dbc.Alert([
+                    html.I(className="fas fa-exclamation-triangle me-2"),
+                    "Erro ao limpar os dados. Tente novamente."
+                ], color="danger", duration=5000)
+                
+        except Exception as e:
+            return dbc.Alert([
+                html.I(className="fas fa-exclamation-triangle me-2"),
+                f"Erro ao limpar dados: {str(e)}"
+            ], color="danger", duration=5000)
+    
+    return ""
+
+# Data status callback
+@app.callback(
+    Output("clear-data-output", "children", allow_duplicate=True),
+    [Input("data-status-btn", "n_clicks")],
+    prevent_initial_call=True
+)
+def show_data_status(n_clicks):
+    if n_clicks:
+        try:
+            summary = data_manager.get_data_summary()
+            total_records = summary.get('total_records', 0)
+            parameters = summary.get('parameters', [])
+            
+            if total_records > 0:
+                date_range = summary.get('date_range', {})
+                start_date = date_range.get('start', 'N/A')
+                end_date = date_range.get('end', 'N/A')
+                
+                return dbc.Alert([
+                    html.H5([
+                        html.I(className="fas fa-info-circle me-2"),
+                        "Status dos Dados"
+                    ]),
+                    html.P([
+                        html.Strong("Total de registros: "), f"{total_records:,}",
+                        html.Br(),
+                        html.Strong("Parâmetros monitorados: "), f"{len(parameters)}",
+                        html.Br(),
+                        html.Strong("Período: "), f"{start_date[:10] if start_date != 'N/A' else 'N/A'} até {end_date[:10] if end_date != 'N/A' else 'N/A'}"
+                    ])
+                ], color="info", duration=8000)
+            else:
+                return dbc.Alert([
+                    html.I(className="fas fa-database me-2"),
+                    "Nenhum dado encontrado. Use a simulação ou carregue arquivos CSV para começar."
+                ], color="warning", duration=5000)
+                
+        except Exception as e:
+            return dbc.Alert([
+                html.I(className="fas fa-exclamation-triangle me-2"),
+                f"Erro ao verificar status: {str(e)}"
+            ], color="danger", duration=5000)
+    
+    return ""
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

@@ -242,6 +242,20 @@ class DataManager:
             print(f"Error retrieving parameter data: {e}")
             return pd.Series()
     
+    def clear_all_data(self) -> bool:
+        """
+        Clear all data and reset the data file.
+        
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            self._initialize_data_file()
+            return True
+        except Exception as e:
+            print(f"Error clearing data: {e}")
+            return False
+    
     def get_data_summary(self) -> Dict[str, Any]:
         """
         Get a summary of the stored data.
