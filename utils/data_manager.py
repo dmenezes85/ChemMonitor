@@ -137,7 +137,7 @@ class DataManager:
             print(f"Error retrieving all data: {e}")
             return pd.DataFrame()
     
-    def get_latest_data(self, n: int = 1) -> pd.DataFrame:
+    def get_latest_data(self, n: int = 100) -> pd.DataFrame:
         """
         Get the latest n data points.
         

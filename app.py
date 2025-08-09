@@ -1,4 +1,6 @@
-import streamlit as st
+import dash
+from dash import dcc, html, dash_table, Input, Output, State, callback, ctx
+import dash_bootstrap_components as dbc
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -12,244 +14,352 @@ from utils.alert_system import AlertSystem
 from utils.visualization import ChartGenerator
 from utils.statistics import StatisticsCalculator
 
-# Page configuration
-st.set_page_config(
-    page_title="Chemical Process Monitor",
-    page_icon="🧪",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+# Initialize Dash app
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP], suppress_callback_exceptions=True)
+app.title = "Chemical Process Monitor"
 
-# Initialize data manager and alert system
-@st.cache_resource
-def initialize_systems():
-    data_manager = DataManager()
-    alert_system = AlertSystem()
-    chart_generator = ChartGenerator()
-    stats_calculator = StatisticsCalculator()
-    return data_manager, alert_system, chart_generator, stats_calculator
+# Initialize systems
+data_manager = DataManager()
+alert_system = AlertSystem()
+chart_generator = ChartGenerator()
+stats_calculator = StatisticsCalculator()
 
-data_manager, alert_system, chart_generator, stats_calculator = initialize_systems()
-
-# Main dashboard
-def main_dashboard():
-    st.title("🧪 Chemical Process Monitoring Dashboard")
-    st.markdown("---")
+# Layout
+app.layout = dbc.Container([
+    dbc.Row([
+        dbc.Col([
+            html.H1("🧪 Chemical Process Monitoring Dashboard", className="text-center mb-4"),
+            html.Hr()
+        ])
+    ]),
     
-    # Load current data
+    # Navigation tabs
+    dbc.Row([
+        dbc.Col([
+            dbc.Tabs([
+                dbc.Tab(label="Dashboard Principal", tab_id="dashboard"),
+                dbc.Tab(label="Entrada de Dados", tab_id="data-input"),
+                dbc.Tab(label="Análise Histórica", tab_id="historical"),
+                dbc.Tab(label="Configuração de Alertas", tab_id="alerts"),
+                dbc.Tab(label="Exportar Dados", tab_id="export")
+            ], id="tabs", active_tab="dashboard")
+        ])
+    ], className="mb-4"),
+    
+    # Main content area
+    dbc.Row([
+        dbc.Col([
+            html.Div(id="tab-content")
+        ])
+    ]),
+    
+    # Auto-refresh component
+    dcc.Interval(id='interval-component', interval=30*1000, n_intervals=0)
+], fluid=True)
+
+# Dashboard principal content
+def create_dashboard_content():
     current_data = data_manager.get_latest_data()
     
     if current_data.empty:
-        st.warning("No data available. Please add some data using the Data Input page.")
-        st.info("👈 Use the sidebar to navigate to different sections of the dashboard.")
-        return
+        return dbc.Alert([
+            html.H4("Nenhum dado disponível", className="alert-heading"),
+            html.P("Por favor, adicione alguns dados usando a aba 'Entrada de Dados'.")
+        ], color="warning")
     
-    # Real-time metrics overview
-    st.subheader("📊 Current Process Status")
+    # Métricas atuais
+    metrics_cards = []
+    parameters = ['temperature', 'pressure', 'ph', 'flow_rate']
+    parameter_labels = {
+        'temperature': ('Temperatura', '°C'),
+        'pressure': ('Pressão', 'bar'),
+        'ph': ('pH', ''),
+        'flow_rate': ('Vazão', 'L/min')
+    }
     
-    # Create metrics columns
-    col1, col2, col3, col4 = st.columns(4)
+    for param in parameters:
+        if param in current_data.columns:
+            value = current_data[param].iloc[-1] if not current_data[param].empty else 0
+            label, unit = parameter_labels[param]
+            
+            metrics_cards.append(
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{value:.2f}", className="card-title"),
+                            html.P(f"{label} ({unit})", className="card-text")
+                        ])
+                    ])
+                ], width=3)
+            )
     
-    with col1:
-        if 'temperature' in current_data.columns:
-            temp_val = current_data['temperature'].iloc[-1] if not current_data['temperature'].empty else 0
-            st.metric("Temperature (°C)", f"{temp_val:.1f}")
-        
-    with col2:
-        if 'pressure' in current_data.columns:
-            pressure_val = current_data['pressure'].iloc[-1] if not current_data['pressure'].empty else 0
-            st.metric("Pressure (bar)", f"{pressure_val:.2f}")
-    
-    with col3:
-        if 'ph' in current_data.columns:
-            ph_val = current_data['ph'].iloc[-1] if not current_data['ph'].empty else 7.0
-            st.metric("pH Level", f"{ph_val:.2f}")
-    
-    with col4:
-        if 'flow_rate' in current_data.columns:
-            flow_val = current_data['flow_rate'].iloc[-1] if not current_data['flow_rate'].empty else 0
-            st.metric("Flow Rate (L/min)", f"{flow_val:.1f}")
-    
-    st.markdown("---")
-    
-    # Alert status
-    st.subheader("🚨 Alert Status")
-    alerts = alert_system.check_alerts(current_data)
-    
-    if alerts:
-        for alert in alerts:
-            if alert['severity'] == 'Critical':
-                st.error(f"🔴 **CRITICAL**: {alert['message']}")
-            elif alert['severity'] == 'Warning':
-                st.warning(f"🟡 **WARNING**: {alert['message']}")
-            else:
-                st.info(f"🔵 **INFO**: {alert['message']}")
+    # Gráficos em tempo real
+    if 'timestamp' in current_data.columns:
+        fig = chart_generator.create_multi_line_chart(current_data, 'timestamp', parameters[:4])
     else:
-        st.success("✅ All parameters within normal ranges")
+        fig = chart_generator._create_empty_chart("Dados de timestamp não encontrados")
     
-    st.markdown("---")
-    
-    # Real-time charts
-    st.subheader("📈 Real-time Trends")
-    
-    # Time range selector
-    time_range = st.selectbox(
-        "Select time range:",
-        ["Last 1 hour", "Last 6 hours", "Last 24 hours", "Last 7 days"],
-        index=1
-    )
-    
-    # Filter data based on time range
-    hours_map = {"Last 1 hour": 1, "Last 6 hours": 6, "Last 24 hours": 24, "Last 7 days": 168}
-    hours = hours_map[time_range]
-    
-    filtered_data = data_manager.get_data_by_time_range(hours)
-    
-    if not filtered_data.empty:
-        # Create multiple chart tabs
-        tab1, tab2, tab3 = st.tabs(["📊 Line Charts", "🎯 Gauges", "📈 Distribution"])
+    return html.Div([
+        dbc.Row([
+            html.H3("📊 Status Atual do Processo"),
+        ], className="mb-3"),
         
-        with tab1:
-            # Temperature and Pressure charts
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                if 'temperature' in filtered_data.columns:
-                    fig_temp = chart_generator.create_line_chart(
-                        filtered_data, 'timestamp', 'temperature', 
-                        "Temperature Over Time", "Temperature (°C)"
-                    )
-                    st.plotly_chart(fig_temp, use_container_width=True, key="temp_line_chart")
-            
-            with col2:
-                if 'pressure' in filtered_data.columns:
-                    fig_pressure = chart_generator.create_line_chart(
-                        filtered_data, 'timestamp', 'pressure', 
-                        "Pressure Over Time", "Pressure (bar)"
-                    )
-                    st.plotly_chart(fig_pressure, use_container_width=True, key="pressure_line_chart")
-            
-            # pH and Flow Rate charts
-            col3, col4 = st.columns(2)
-            
-            with col3:
-                if 'ph' in filtered_data.columns:
-                    fig_ph = chart_generator.create_line_chart(
-                        filtered_data, 'timestamp', 'ph', 
-                        "pH Level Over Time", "pH"
-                    )
-                    st.plotly_chart(fig_ph, use_container_width=True, key="ph_line_chart")
-            
-            with col4:
-                if 'flow_rate' in filtered_data.columns:
-                    fig_flow = chart_generator.create_line_chart(
-                        filtered_data, 'timestamp', 'flow_rate', 
-                        "Flow Rate Over Time", "Flow Rate (L/min)"
-                    )
-                    st.plotly_chart(fig_flow, use_container_width=True, key="flow_line_chart")
+        dbc.Row(metrics_cards, className="mb-4"),
         
-        with tab2:
-            # Gauge charts for current values
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                if 'temperature' in current_data.columns:
-                    temp_val = current_data['temperature'].iloc[-1]
-                    fig_temp_gauge = chart_generator.create_gauge_chart(
-                        temp_val, "Temperature", "°C", 0, 200
-                    )
-                    st.plotly_chart(fig_temp_gauge, use_container_width=True, key="temp_gauge_chart")
-                
-                if 'ph' in current_data.columns:
-                    ph_val = current_data['ph'].iloc[-1]
-                    fig_ph_gauge = chart_generator.create_gauge_chart(
-                        ph_val, "pH Level", "", 0, 14
-                    )
-                    st.plotly_chart(fig_ph_gauge, use_container_width=True, key="ph_gauge_chart")
-            
-            with col2:
-                if 'pressure' in current_data.columns:
-                    pressure_val = current_data['pressure'].iloc[-1]
-                    fig_pressure_gauge = chart_generator.create_gauge_chart(
-                        pressure_val, "Pressure", "bar", 0, 10
-                    )
-                    st.plotly_chart(fig_pressure_gauge, use_container_width=True, key="pressure_gauge_chart")
-                
-                if 'flow_rate' in current_data.columns:
-                    flow_val = current_data['flow_rate'].iloc[-1]
-                    fig_flow_gauge = chart_generator.create_gauge_chart(
-                        flow_val, "Flow Rate", "L/min", 0, 100
-                    )
-                    st.plotly_chart(fig_flow_gauge, use_container_width=True, key="flow_gauge_chart")
+        dbc.Row([
+            dbc.Col([
+                html.H4("Tendências em Tempo Real"),
+                dcc.Graph(figure=fig)
+            ])
+        ]),
         
-        with tab3:
-            # Distribution histograms
-            numeric_columns = filtered_data.select_dtypes(include=[np.number]).columns
-            selected_params = st.multiselect(
-                "Select parameters for distribution analysis:",
-                numeric_columns.tolist(),
-                default=numeric_columns.tolist()[:2] if len(numeric_columns) >= 2 else numeric_columns.tolist()
+        dbc.Row([
+            dbc.Col([
+                html.H4("Alertas Ativos"),
+                html.Div(id="active-alerts")
+            ])
+        ])
+    ])
+
+# Data input content
+def create_data_input_content():
+    return html.Div([
+        dbc.Row([
+            html.H3("📝 Entrada de Dados"),
+        ], className="mb-3"),
+        
+        dbc.Row([
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader("Upload de Arquivo CSV"),
+                    dbc.CardBody([
+                        dcc.Upload(
+                            id='upload-data',
+                            children=html.Div([
+                                'Arraste e solte ou ',
+                                html.A('selecione um arquivo')
+                            ]),
+                            style={
+                                'width': '100%',
+                                'height': '60px',
+                                'lineHeight': '60px',
+                                'borderWidth': '1px',
+                                'borderStyle': 'dashed',
+                                'borderRadius': '5px',
+                                'textAlign': 'center',
+                                'margin': '10px'
+                            },
+                            multiple=False
+                        ),
+                        html.Div(id='output-data-upload')
+                    ])
+                ])
+            ], width=6),
+            
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader("Entrada Manual"),
+                    dbc.CardBody([
+                        dbc.Row([
+                            dbc.Col([
+                                dbc.Label("Temperatura (°C)"),
+                                dbc.Input(id="temp-input", type="number", value=25.0)
+                            ], width=6),
+                            dbc.Col([
+                                dbc.Label("Pressão (bar)"),
+                                dbc.Input(id="pressure-input", type="number", value=1.0)
+                            ], width=6)
+                        ]),
+                        dbc.Row([
+                            dbc.Col([
+                                dbc.Label("pH"),
+                                dbc.Input(id="ph-input", type="number", value=7.0)
+                            ], width=6),
+                            dbc.Col([
+                                dbc.Label("Vazão (L/min)"),
+                                dbc.Input(id="flow-input", type="number", value=10.0)
+                            ], width=6)
+                        ], className="mt-2"),
+                        dbc.Button("Adicionar Dados", id="add-data-btn", color="primary", className="mt-3"),
+                        html.Div(id="add-data-output")
+                    ])
+                ])
+            ], width=6)
+        ]),
+        
+        dbc.Row([
+            dbc.Col([
+                html.H4("Gerar Dados Simulados"),
+                dbc.Button("Gerar 24h de Dados", id="simulate-btn", color="secondary"),
+                html.Div(id="simulate-output")
+            ])
+        ], className="mt-4")
+    ])
+
+# Historical analysis content
+def create_historical_content():
+    return html.Div([
+        dbc.Row([
+            html.H3("📈 Análise Histórica"),
+        ], className="mb-3"),
+        
+        dbc.Row([
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader("Filtros"),
+                    dbc.CardBody([
+                        dbc.Label("Período"),
+                        dcc.DatePickerRange(
+                            id='date-picker-range',
+                            start_date=datetime.now() - timedelta(days=7),
+                            end_date=datetime.now()
+                        ),
+                        dbc.Label("Parâmetros", className="mt-2"),
+                        dcc.Dropdown(
+                            id='parameter-dropdown',
+                            options=[
+                                {'label': 'Temperatura', 'value': 'temperature'},
+                                {'label': 'Pressão', 'value': 'pressure'},
+                                {'label': 'pH', 'value': 'ph'},
+                                {'label': 'Vazão', 'value': 'flow_rate'}
+                            ],
+                            value=['temperature', 'pressure'],
+                            multi=True
+                        )
+                    ])
+                ])
+            ], width=3),
+            
+            dbc.Col([
+                html.Div(id="historical-charts")
+            ], width=9)
+        ])
+    ])
+
+# Callback for tab content
+@callback(Output('tab-content', 'children'), [Input('tabs', 'active_tab')])
+def render_tab_content(active_tab):
+    if active_tab == "dashboard":
+        return create_dashboard_content()
+    elif active_tab == "data-input":
+        return create_data_input_content()
+    elif active_tab == "historical":
+        return create_historical_content()
+    elif active_tab == "alerts":
+        return html.Div("Configuração de alertas em desenvolvimento...")
+    elif active_tab == "export":
+        return html.Div("Exportação de dados em desenvolvimento...")
+    return html.Div("Selecione uma aba")
+
+# Callback for manual data input
+@callback(
+    Output('add-data-output', 'children'),
+    [Input('add-data-btn', 'n_clicks')],
+    [State('temp-input', 'value'),
+     State('pressure-input', 'value'),
+     State('ph-input', 'value'),
+     State('flow-input', 'value')]
+)
+def add_manual_data(n_clicks, temp, pressure, ph, flow):
+    if n_clicks:
+        try:
+            new_data = pd.DataFrame({
+                'timestamp': [datetime.now()],
+                'temperature': [temp],
+                'pressure': [pressure],
+                'ph': [ph],
+                'flow_rate': [flow]
+            })
+            
+            success = data_manager.add_data(new_data)
+            if success:
+                return dbc.Alert("Dados adicionados com sucesso!", color="success", duration=3000)
+            else:
+                return dbc.Alert("Erro ao adicionar dados", color="danger", duration=3000)
+        except Exception as e:
+            return dbc.Alert(f"Erro: {str(e)}", color="danger", duration=3000)
+    return ""
+
+# Callback for data simulation
+@callback(
+    Output('simulate-output', 'children'),
+    [Input('simulate-btn', 'n_clicks')]
+)
+def simulate_data(n_clicks):
+    if n_clicks:
+        try:
+            # Generate 24 hours of simulated data
+            timestamps = pd.date_range(
+                start=datetime.now() - timedelta(hours=24),
+                end=datetime.now(),
+                freq='10T'  # Every 10 minutes
             )
             
-            if selected_params:
-                for i, param in enumerate(selected_params):
-                    fig_hist = chart_generator.create_histogram(
-                        filtered_data[param], f"{param.title()} Distribution"
-                    )
-                    st.plotly_chart(fig_hist, use_container_width=True, key=f"hist_chart_{i}")
-    
-    else:
-        st.info("No data available for the selected time range.")
-    
-    # Statistics summary
-    st.markdown("---")
-    st.subheader("📊 Statistical Summary")
-    
-    if not current_data.empty:
-        stats_summary = stats_calculator.calculate_basic_stats(filtered_data)
-        if not stats_summary.empty:
-            st.dataframe(stats_summary, use_container_width=True)
-    
-    # Auto-refresh option
-    st.markdown("---")
-    auto_refresh = st.checkbox("Enable auto-refresh (30 seconds)")
-    
-    if auto_refresh:
-        st.rerun()
+            n_points = len(timestamps)
+            
+            # Generate realistic process data with some noise
+            base_temp = 75
+            temp_variation = np.sin(np.linspace(0, 4*np.pi, n_points)) * 5
+            temperature = base_temp + temp_variation + np.random.normal(0, 1, n_points)
+            
+            pressure = 2.5 + np.random.normal(0, 0.1, n_points)
+            ph = 7.2 + np.random.normal(0, 0.2, n_points)
+            flow_rate = 15 + np.random.normal(0, 0.5, n_points)
+            
+            simulated_data = pd.DataFrame({
+                'timestamp': timestamps,
+                'temperature': temperature,
+                'pressure': pressure,
+                'ph': ph,
+                'flow_rate': flow_rate
+            })
+            
+            success = data_manager.add_data(simulated_data)
+            if success:
+                return dbc.Alert(f"Gerados {n_points} pontos de dados simulados!", color="success", duration=3000)
+            else:
+                return dbc.Alert("Erro ao gerar dados simulados", color="danger", duration=3000)
+        except Exception as e:
+            return dbc.Alert(f"Erro: {str(e)}", color="danger", duration=3000)
+    return ""
 
-# Sidebar navigation
-with st.sidebar:
-    st.title("Navigation")
-    st.markdown("---")
+# Callback for historical analysis
+@callback(
+    Output('historical-charts', 'children'),
+    [Input('date-picker-range', 'start_date'),
+     Input('date-picker-range', 'end_date'),
+     Input('parameter-dropdown', 'value')]
+)
+def update_historical_charts(start_date, end_date, selected_params):
+    if not selected_params:
+        return html.Div("Selecione pelo menos um parâmetro")
     
-    # System status
-    st.subheader("System Status")
-    data_count = len(data_manager.get_all_data())
-    st.metric("Total Data Points", data_count)
-    
-    alert_count = len(alert_system.check_alerts(data_manager.get_latest_data()))
-    if alert_count > 0:
-        st.metric("Active Alerts", alert_count, delta=alert_count, delta_color="inverse")
-    else:
-        st.metric("Active Alerts", 0)
-    
-    st.markdown("---")
-    
-    # Quick actions
-    st.subheader("Quick Actions")
-    if st.button("🔄 Refresh Data"):
-        st.rerun()
-    
-    if st.button("🧹 Clear All Data"):
-        if st.session_state.get('confirm_clear', False):
-            data_manager.clear_all_data()
-            st.success("All data cleared!")
-            st.session_state.confirm_clear = False
-            st.rerun()
+    try:
+        historical_data = data_manager.get_data_by_date_range(start_date, end_date)
+        
+        if historical_data.empty:
+            return dbc.Alert("Nenhum dado encontrado para o período selecionado", color="info")
+        
+        # Create time series chart
+        if 'timestamp' in historical_data.columns:
+            fig = chart_generator.create_multi_line_chart(historical_data, 'timestamp', selected_params)
         else:
-            st.session_state.confirm_clear = True
-            st.warning("Click again to confirm data clearing")
+            fig = chart_generator._create_empty_chart("Dados de timestamp não encontrados")
+        
+        # Create statistics summary
+        stats = stats_calculator.calculate_basic_stats(historical_data[selected_params])
+        
+        return html.Div([
+            dcc.Graph(figure=fig),
+            html.H5("Estatísticas do Período"),
+            dash_table.DataTable(
+                data=stats.reset_index().to_dict('records'),
+                columns=[{"name": i, "id": i} for i in stats.reset_index().columns],
+                style_cell={'textAlign': 'left'}
+            )
+        ])
+    except Exception as e:
+        return dbc.Alert(f"Erro ao carregar dados históricos: {str(e)}", color="danger")
 
-# Main content
-if __name__ == "__main__":
-    main_dashboard()
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)

@@ -2,7 +2,7 @@
 
 ## Overview
 
-This repository contains a Streamlit-based chemical process monitoring dashboard that provides real-time visualization, historical analysis, alert management, and data export capabilities for industrial chemical processes. The application is designed to monitor critical parameters like temperature, pressure, pH, flow rate, and concentration, with comprehensive alerting and reporting features.
+This repository contains a Dash-based chemical process monitoring dashboard that provides real-time visualization, historical analysis, alert management, and data export capabilities for industrial chemical processes. The application is designed to monitor critical parameters like temperature, pressure, pH, flow rate, and concentration, with comprehensive alerting and reporting features. Recently migrated from Streamlit to Dash for better performance and interactivity.
 
 ## User Preferences
 
@@ -11,11 +11,11 @@ Preferred communication style: Simple, everyday language.
 ## System Architecture
 
 ### Frontend Architecture
-- **Framework**: Streamlit web application
-- **Layout**: Multi-page application with wide layout configuration
-- **Navigation**: Sidebar-based page navigation
-- **UI Components**: Interactive charts using Plotly, data tables, forms, and tabs
-- **State Management**: Streamlit session state and caching for performance
+- **Framework**: Dash web application with Bootstrap styling
+- **Layout**: Tab-based navigation with responsive design
+- **Navigation**: Top-level tabs for different sections
+- **UI Components**: Interactive charts using Plotly, data tables, forms, and Bootstrap cards
+- **State Management**: Dash callbacks for real-time interactivity
 
 ### Backend Architecture
 - **Data Storage**: JSON file-based storage system for simplicity and portability
@@ -99,7 +99,8 @@ utils/
 ## External Dependencies
 
 ### Core Libraries
-- **streamlit**: Web application framework
+- **dash**: Web application framework
+- **dash-bootstrap-components**: Bootstrap components for Dash
 - **pandas**: Data manipulation and analysis
 - **numpy**: Numerical computing
 - **plotly**: Interactive visualization library
@@ -119,8 +120,8 @@ utils/
 
 ### Local Development
 - **Requirements**: Python 3.7+ with required packages
-- **Command**: `streamlit run app.py`
-- **Port**: Default Streamlit port (8501)
+- **Command**: `python app.py`
+- **Port**: Port 5000 for Replit compatibility
 
 ### Production Considerations
 - **Scalability**: File-based storage suitable for small to medium datasets
