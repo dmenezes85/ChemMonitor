@@ -1590,14 +1590,26 @@ def handle_export(csv_clicks, json_clicks, excel_clicks):
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         
         if button_id == "export-csv-btn":
-            # Simulate CSV export
+            # Real CSV export functionality
             filename = f"process_data_{timestamp}.csv"
-            # Convert data to CSV (in reality would save to file)
-            csv_content = data.to_csv(index=False)
-            return dbc.Alert([
-                html.I(className="fas fa-check-circle me-2"),
-                f"CSV gerado com sucesso! {len(data)} registros exportados para {filename}"
-            ], color="success", duration=5000)
+            try:
+                # Save to exports directory
+                os.makedirs('exports', exist_ok=True)
+                export_path = f'exports/{filename}'
+                
+                # Export to CSV file
+                data.to_csv(export_path, index=False)
+                
+                return dbc.Alert([
+                    html.I(className="fas fa-check-circle me-2"),
+                    f"CSV exportado! {len(data)} registros salvos em {export_path}"
+                ], color="success", duration=5000)
+                
+            except Exception as e:
+                return dbc.Alert([
+                    html.I(className="fas fa-exclamation-triangle me-2"),
+                    f"Erro ao exportar CSV: {str(e)}"
+                ], color="danger", duration=5000)
         
         elif button_id == "export-json-btn":
             # Actual JSON export functionality
@@ -1633,12 +1645,26 @@ def handle_export(csv_clicks, json_clicks, excel_clicks):
                 ], color="danger", duration=5000)
         
         elif button_id == "export-excel-btn":
-            # Simulate Excel export (would need openpyxl package for real implementation)
+            # Real Excel export functionality
             filename = f"process_data_{timestamp}.xlsx"
-            return dbc.Alert([
-                html.I(className="fas fa-file-excel me-2"),
-                f"Excel simulado! {len(data)} registros preparados para {filename} (requer biblioteca openpyxl)"
-            ], color="info", duration=5000)
+            try:
+                # Save to exports directory
+                os.makedirs('exports', exist_ok=True)
+                export_path = f'exports/{filename}'
+                
+                # Export to Excel file
+                data.to_excel(export_path, index=False, sheet_name='Process Data')
+                
+                return dbc.Alert([
+                    html.I(className="fas fa-file-excel me-2"),
+                    f"Excel exportado! {len(data)} registros salvos em {export_path}"
+                ], color="success", duration=5000)
+                
+            except Exception as e:
+                return dbc.Alert([
+                    html.I(className="fas fa-exclamation-triangle me-2"),
+                    f"Erro ao exportar Excel: {str(e)}"
+                ], color="danger", duration=5000)
             
     except Exception as e:
         return dbc.Alert([
@@ -1805,6 +1831,126 @@ def handle_file_upload(contents, filename):
             ], color="danger")
     
     return ""
+
+# Report generation callbacks
+@app.callback(
+    Output("export-output", "children", allow_duplicate=True),
+    [Input("report-operational-btn", "n_clicks"),
+     Input("report-stats-btn", "n_clicks"),
+     Input("report-alerts-btn", "n_clicks")],
+    prevent_initial_call=True
+)
+def generate_reports(operational_clicks, stats_clicks, alerts_clicks):
+    ctx = dash.callback_context
+    if not ctx.triggered:
+        return ""
+    
+    button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    
+    try:
+        data = data_manager.get_latest_data(10000)
+        if data.empty:
+            return dbc.Alert("Nenhum dado disponível para gerar relatório", color="warning")
+        
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        
+        if button_id == "report-operational-btn":
+            # Generate operational report
+            report_content = {
+                'titulo': 'Relatório Operacional',
+                'periodo': f"{data['timestamp'].min()} a {data['timestamp'].max()}" if 'timestamp' in data.columns else "Período não disponível",
+                'total_registros': len(data),
+                'parametros_monitorados': list(data.select_dtypes(include=[np.number]).columns),
+                'resumo_operacional': {
+                    'temperatura_media': data['temperature'].mean() if 'temperature' in data.columns else 'N/A',
+                    'pressao_media': data['pressure'].mean() if 'pressure' in data.columns else 'N/A',
+                    'ph_medio': data['ph'].mean() if 'ph' in data.columns else 'N/A',
+                    'vazao_media': data['flow_rate'].mean() if 'flow_rate' in data.columns else 'N/A'
+                }
+            }
+            
+            filename = f"relatorio_operacional_{timestamp}.json"
+            os.makedirs('exports', exist_ok=True)
+            export_path = f'exports/{filename}'
+            
+            with open(export_path, 'w', encoding='utf-8') as f:
+                json.dump(report_content, f, indent=2, default=str, ensure_ascii=False)
+                
+            return dbc.Alert([
+                html.I(className="fas fa-file-alt me-2"),
+                f"Relatório Operacional gerado! Salvo em {export_path}"
+            ], color="primary", duration=5000)
+            
+        elif button_id == "report-stats-btn":
+            # Generate statistical report
+            numeric_data = data.select_dtypes(include=[np.number])
+            stats_report = {
+                'titulo': 'Relatório de Análise Estatística',
+                'periodo': f"{data['timestamp'].min()} a {data['timestamp'].max()}" if 'timestamp' in data.columns else "Período não disponível",
+                'estatisticas': {}
+            }
+            
+            for col in numeric_data.columns:
+                stats_report['estatisticas'][col] = {
+                    'media': float(numeric_data[col].mean()),
+                    'mediana': float(numeric_data[col].median()),
+                    'desvio_padrao': float(numeric_data[col].std()),
+                    'minimo': float(numeric_data[col].min()),
+                    'maximo': float(numeric_data[col].max()),
+                    'percentil_25': float(numeric_data[col].quantile(0.25)),
+                    'percentil_75': float(numeric_data[col].quantile(0.75))
+                }
+            
+            filename = f"relatorio_estatisticas_{timestamp}.json"
+            os.makedirs('exports', exist_ok=True)
+            export_path = f'exports/{filename}'
+            
+            with open(export_path, 'w', encoding='utf-8') as f:
+                json.dump(stats_report, f, indent=2, default=str, ensure_ascii=False)
+                
+            return dbc.Alert([
+                html.I(className="fas fa-chart-bar me-2"),
+                f"Relatório Estatístico gerado! Salvo em {export_path}"
+            ], color="success", duration=5000)
+            
+        elif button_id == "report-alerts-btn":
+            # Generate alerts report
+            alerts_history = alert_system.get_alert_history()
+            alerts_config = alert_system.get_alert_configs()
+            
+            alerts_report = {
+                'titulo': 'Relatório de Alertas',
+                'periodo': f"{data['timestamp'].min()} a {data['timestamp'].max()}" if 'timestamp' in data.columns else "Período não disponível",
+                'configuracoes_alertas': alerts_config,
+                'historico_alertas': alerts_history,
+                'total_alertas': len(alerts_history),
+                'alertas_por_parametro': {}
+            }
+            
+            # Count alerts by parameter
+            for alert in alerts_history:
+                param = alert.get('parameter', 'Unknown')
+                if param not in alerts_report['alertas_por_parametro']:
+                    alerts_report['alertas_por_parametro'][param] = 0
+                alerts_report['alertas_por_parametro'][param] += 1
+            
+            filename = f"relatorio_alertas_{timestamp}.json"
+            os.makedirs('exports', exist_ok=True)
+            export_path = f'exports/{filename}'
+            
+            with open(export_path, 'w', encoding='utf-8') as f:
+                json.dump(alerts_report, f, indent=2, default=str, ensure_ascii=False)
+                
+            return dbc.Alert([
+                html.I(className="fas fa-bell me-2"),
+                f"Relatório de Alertas gerado! Salvo em {export_path}"
+            ], color="warning", duration=5000)
+            
+    except Exception as e:
+        return dbc.Alert([
+            html.I(className="fas fa-exclamation-triangle me-2"),
+            f"Erro ao gerar relatório: {str(e)}"
+        ], color="danger", duration=5000)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
