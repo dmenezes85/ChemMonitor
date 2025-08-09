@@ -953,10 +953,10 @@ def create_historical():
         # Analysis tabs
         dbc.Tabs([
             # Time series analysis
-            dbc.Tab(label="Análise Temporal", tab_id="temporal", active_label_className="fw-bold"),
-            dbc.Tab(label="Tendências", tab_id="trends", active_label_className="fw-bold"),
-            dbc.Tab(label="Correlações", tab_id="correlations", active_label_className="fw-bold"),
-            dbc.Tab(label="Estatísticas", tab_id="statistics", active_label_className="fw-bold")
+            dbc.Tab(label="Análise Temporal", tab_id="temporal", activeLabelClassName="fw-bold"),
+            dbc.Tab(label="Tendências", tab_id="trends", activeLabelClassName="fw-bold"),
+            dbc.Tab(label="Correlações", tab_id="correlations", activeLabelClassName="fw-bold"),
+            dbc.Tab(label="Estatísticas", tab_id="statistics", activeLabelClassName="fw-bold")
         ], id="historical-tabs", active_tab="temporal", className="mb-4"),
         
         # Filters row
@@ -1807,4 +1807,4 @@ def handle_file_upload(contents, filename):
     return ""
 
 if __name__ == '__main__':
-    app.run(host='127.0.0.1', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
