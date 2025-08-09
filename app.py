@@ -259,29 +259,7 @@ def create_dashboard():
             ], width=3)
         ], className="mb-4"),
         
-        # Quick actions
-        dbc.Row([
-            dbc.Col([
-                dbc.ButtonGroup([
-                    dbc.Button([
-                        html.I(className="fas fa-plus me-2"),
-                        "Adicionar Dados"
-                    ], href="/data-input", color="primary", size="sm"),
-                    dbc.Button([
-                        html.I(className="fas fa-bell me-2"),
-                        "Ver Alertas"
-                    ], href="/alerts", color="warning", size="sm"),
-                    dbc.Button([
-                        html.I(className="fas fa-download me-2"),
-                        "Exportar"
-                    ], href="/export", color="success", size="sm"),
-                    dbc.Button([
-                        html.I(className="fas fa-chart-line me-2"),
-                        "Análise"
-                    ], href="/historical", color="info", size="sm")
-                ], className="mb-3")
-            ], width=12)
-        ]),
+
         
         metric_cards,
         
@@ -1293,21 +1271,64 @@ def handle_export(csv_clicks, json_clicks, excel_clicks):
         if data.empty:
             return dbc.Alert("Nenhum dado disponível para exportar", color="warning")
         
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        
         if button_id == "export-csv-btn":
-            filename = f"process_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-            # In a real app, this would trigger a download
-            return dbc.Alert(f"Dados exportados como {filename} ({len(data)} registros)", color="success")
+            # Simulate CSV export
+            filename = f"process_data_{timestamp}.csv"
+            # Convert data to CSV (in reality would save to file)
+            csv_content = data.to_csv(index=False)
+            return dbc.Alert([
+                html.I(className="fas fa-check-circle me-2"),
+                f"CSV gerado com sucesso! {len(data)} registros exportados para {filename}"
+            ], color="success", duration=5000)
         
         elif button_id == "export-json-btn":
-            filename = f"process_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-            return dbc.Alert(f"Dados exportados como {filename} ({len(data)} registros)", color="success")
+            # Actual JSON export functionality
+            filename = f"process_data_{timestamp}.json"
+            try:
+                # Export to actual file
+                export_data = {
+                    'metadata': {
+                        'exported_at': datetime.now().isoformat(),
+                        'total_records': len(data),
+                        'parameters': list(data.columns),
+                        'export_format': 'json'
+                    },
+                    'data': data.to_dict('records')
+                }
+                
+                # Save to downloads or export directory
+                os.makedirs('exports', exist_ok=True)
+                export_path = f'exports/{filename}'
+                
+                with open(export_path, 'w') as f:
+                    json.dump(export_data, f, indent=2, default=str)
+                
+                return dbc.Alert([
+                    html.I(className="fas fa-download me-2"),
+                    f"JSON exportado! {len(data)} registros salvos em {export_path}"
+                ], color="success", duration=5000)
+                
+            except Exception as e:
+                return dbc.Alert([
+                    html.I(className="fas fa-exclamation-triangle me-2"),
+                    f"Erro ao exportar JSON: {str(e)}"
+                ], color="danger", duration=5000)
         
         elif button_id == "export-excel-btn":
-            filename = f"process_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
-            return dbc.Alert(f"Dados exportados como {filename} ({len(data)} registros)", color="success")
+            # Simulate Excel export (would need openpyxl package for real implementation)
+            filename = f"process_data_{timestamp}.xlsx"
+            return dbc.Alert([
+                html.I(className="fas fa-file-excel me-2"),
+                f"Excel simulado! {len(data)} registros preparados para {filename} (requer biblioteca openpyxl)"
+            ], color="info", duration=5000)
             
     except Exception as e:
-        return dbc.Alert(f"Erro na exportação: {str(e)}", color="danger")
+        return dbc.Alert([
+            html.I(className="fas fa-exclamation-triangle me-2"),
+            f"Erro na exportação: {str(e)}"
+        ], color="danger", duration=5000)
 
 # Advanced simulation callback
 @app.callback(

@@ -96,6 +96,25 @@ class AlertSystem:
             print(f"Error saving alert history: {e}")
             return False
     
+    def get_alert_configs(self) -> Dict[str, Any]:
+        """Get all alert configurations."""
+        try:
+            config = self._load_config()
+            return config.get('parameters', {})
+        except Exception as e:
+            print(f"Error loading alert configs: {e}")
+            return {}
+    
+    def set_alert_config(self, parameter: str, config_data: Dict[str, Any]) -> bool:
+        """Set alert configuration for a parameter."""
+        try:
+            config = self._load_config()
+            config['parameters'][parameter] = config_data
+            return self._save_config(config)
+        except Exception as e:
+            print(f"Error setting alert config: {e}")
+            return False
+
     def save_alert_config(self, parameter: str, config: Dict[str, Any]) -> bool:
         """
         Save alert configuration for a specific parameter.

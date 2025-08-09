@@ -423,6 +423,47 @@ class ChartGenerator:
             print(f"Error creating multi-line chart: {e}")
             return self._create_empty_chart(f"Error: {str(e)}")
     
+    def create_correlation_matrix(self, data: pd.DataFrame, parameters: List[str]) -> go.Figure:
+        """Create correlation matrix chart."""
+        try:
+            if data.empty or not parameters:
+                return self._create_empty_chart("Dados não disponíveis")
+            
+            # Filter data to selected parameters
+            available_params = [p for p in parameters if p in data.columns]
+            if not available_params:
+                return self._create_empty_chart("Parâmetros não disponíveis")
+            
+            # Calculate correlation matrix
+            correlation_data = data[available_params].corr()
+            
+            # Create heatmap
+            fig = go.Figure(data=go.Heatmap(
+                z=correlation_data.values,
+                x=[p.replace('_', ' ').title() for p in correlation_data.columns],
+                y=[p.replace('_', ' ').title() for p in correlation_data.index],
+                colorscale='RdBu',
+                zmid=0,
+                text=correlation_data.values.round(3),
+                texttemplate="%{text}",
+                textfont={"size": 12},
+                colorbar=dict(title="Correlação")
+            ))
+            
+            fig.update_layout(
+                title="Matriz de Correlação",
+                xaxis_title="Parâmetros",
+                yaxis_title="Parâmetros",
+                template="plotly_white",
+                height=500
+            )
+            
+            return fig
+            
+        except Exception as e:
+            print(f"Error creating correlation matrix: {e}")
+            return self._create_empty_chart(f"Error: {str(e)}")
+
     def create_heatmap(self, 
                       data: pd.DataFrame, 
                       title: str = "",
