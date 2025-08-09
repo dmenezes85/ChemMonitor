@@ -1,0 +1,17 @@
+{
+  "titulo": "Relatório Operacional",
+  "periodo": "2025-08-01 23:30:37.154417 a 2025-08-09 01:49:10.790655",
+  "total_registros": 842,
+  "parametros_monitorados": [
+    "temperature",
+    "pressure",
+    "ph",
+    "flow_rate"
+  ],
+  "resumo_operacional": {
+    "temperatura_media": 74.96537196975963,
+    "pressao_media": 2.4961029678935684,
+    "ph_medio": 7.197794933261844,
+    "vazao_media": 14.99825577018483
+  }
+}

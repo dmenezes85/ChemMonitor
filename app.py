@@ -1167,10 +1167,43 @@ def update_historical_analysis(active_tab, start_date, end_date, selected_params
                 ], color="info")
         
         if active_tab == "temporal":
-            # Time series analysis
-            fig = chart_generator.create_multi_line_chart(historical_data, 'timestamp', selected_params, "Análise Temporal")
+            # Time series analysis with filtering and processing
+            processed_data = historical_data.copy()
+            
+            # Apply resolution filtering (resampling)
+            if resolution and resolution != '5T' and 'timestamp' in processed_data.columns:
+                processed_data = processed_data.set_index('timestamp')
+                numeric_cols = processed_data.select_dtypes(include=[np.number]).columns
+                processed_data = processed_data[numeric_cols].resample(resolution).mean()
+                processed_data = processed_data.reset_index()
+            
+            # Apply smoothing
+            if smoothing and smoothing != 'none' and window and window > 2:
+                for param in selected_params:
+                    if param in processed_data.columns:
+                        if smoothing == 'moving_avg':
+                            processed_data[param] = processed_data[param].rolling(window=window, center=True).mean()
+                        elif smoothing == 'exponential':
+                            processed_data[param] = processed_data[param].ewm(span=window).mean()
+                        elif smoothing == 'savgol':
+                            try:
+                                from scipy.signal import savgol_filter
+                                if len(processed_data[param].dropna()) >= window:
+                                    # Use forward fill and backward fill for missing values
+                                    filled_data = processed_data[param].ffill().bfill()
+                                    processed_data[param] = savgol_filter(filled_data, 
+                                                                        window_length=min(window, len(processed_data[param].dropna())), 
+                                                                        polyorder=min(3, window-1))
+                            except ImportError:
+                                # Fallback to moving average if scipy not available
+                                processed_data[param] = processed_data[param].rolling(window=window, center=True).mean()
+            
+            fig = chart_generator.create_multi_line_chart(processed_data, 'timestamp', selected_params, "Análise Temporal")
             return dbc.Card([
-                dbc.CardHeader("Análise Temporal"),
+                dbc.CardHeader([
+                    "Análise Temporal",
+                    html.Small(f" (Resolução: {resolution}, Suavização: {smoothing}, Janela: {window})", className="text-muted ms-2")
+                ]),
                 dbc.CardBody([dcc.Graph(figure=fig)])
             ], className="shadow-sm")
             

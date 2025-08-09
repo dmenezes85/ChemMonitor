@@ -1,0 +1,27 @@
+{
+  "titulo": "Relatório de Alertas",
+  "periodo": "2025-08-01 23:30:37.154417 a 2025-08-09 01:49:10.790655",
+  "configuracoes_alertas": {
+    "temperature": {
+      "enabled": true,
+      "min_value": 60,
+      "max_value": 90,
+      "cooldown_minutes": 5
+    },
+    "pressure": {
+      "enabled": true,
+      "min_value": 2.0,
+      "max_value": 3.0,
+      "cooldown_minutes": 5
+    },
+    "ph": {
+      "enabled": true,
+      "min_value": 6.5,
+      "max_value": 8.0,
+      "cooldown_minutes": 5
+    }
+  },
+  "historico_alertas": [],
+  "total_alertas": 0,
+  "alertas_por_parametro": {}
+}
