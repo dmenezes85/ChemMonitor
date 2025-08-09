@@ -1168,7 +1168,7 @@ def update_historical_analysis(active_tab, start_date, end_date, selected_params
         
         if active_tab == "temporal":
             # Time series analysis
-            fig = chart_generator.create_time_series_chart(historical_data, selected_params, "Análise Temporal")
+            fig = chart_generator.create_multi_line_chart(historical_data, 'timestamp', selected_params, "Análise Temporal")
             return dbc.Card([
                 dbc.CardHeader("Análise Temporal"),
                 dbc.CardBody([dcc.Graph(figure=fig)])
