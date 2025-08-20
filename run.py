@@ -40,13 +40,14 @@ def main():
     # Importar e executar o app
     try:
         import app
-        app.app.run_server(host='127.0.0.1', port=5000, debug=True)
+        app.app.run(debug=True, host='127.0.0.1', port=5000)
     except KeyboardInterrupt:
         print("\n\n🛑 Aplicação interrompida pelo usuário")
         print("Obrigado por usar o Monitor de Processos Químicos!")
     except Exception as e:
         print(f"\n❌ Erro ao executar a aplicação: {e}")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()
