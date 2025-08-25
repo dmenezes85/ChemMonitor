@@ -156,7 +156,8 @@ def create_export():
                                 ], id="export-custom-btn", color="primary", className="w-100")
                             ], width=12)
                         ]),
-                        html.Div(id="export-custom-output", className="mt-3")
+                        html.Div(id="export-custom-output", className="mt-3"),
+                        dcc.Download(id="download-custom")
                     ])
                 ], className="shadow-sm")
             ], width=12)
@@ -277,7 +278,8 @@ def register_export_callbacks(app):
         return dash.no_update, dash.no_update, dash.no_update, ""
 
     @app.callback(
-        Output("export-custom-output", "children"),
+        [Output("download-custom", "data"),
+         Output("export-custom-output", "children")],
         [Input("export-custom-btn", "n_clicks")],
         [State("export-date-range", "start_date"),
          State("export-date-range", "end_date"),
@@ -286,17 +288,18 @@ def register_export_callbacks(app):
     )
     def export_custom_data(n_clicks, start_date, end_date, selected_params):
         if n_clicks is None:
-            return ""
+            return dash.no_update, ""
             
         try:
             # Get data for the selected date range
             df = data_manager.get_data_by_date_range(start_date, end_date)
             
             if df.empty:
-                return dbc.Alert([
-                    html.I(className="fas fa-exclamation-triangle me-2"),
-                    "Nenhum dado encontrado para o período selecionado"
-                ], color="warning")
+                return (dash.no_update,
+                       dbc.Alert([
+                           html.I(className="fas fa-exclamation-triangle me-2"),
+                           "Nenhum dado encontrado para o período selecionado"
+                       ], color="warning"))
             
             # Filter by selected parameters
             if selected_params:
@@ -307,20 +310,19 @@ def register_export_callbacks(app):
             # Generate filename with timestamp
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             
-            # Convert to CSV
-            csv_string = df.to_csv(index=False)
-            csv_bytes = io.BytesIO(csv_string.encode())
-            
-            return dcc.send_bytes(
-                csv_bytes.getvalue(),
-                f"process_data_{timestamp}.csv"
-            )
+            # Convert to CSV and download
+            return (dcc.send_data_frame(df.to_csv, f"process_data_custom_{timestamp}.csv", index=False),
+                    dbc.Alert([
+                        html.I(className="fas fa-check-circle me-2"),
+                        f"Exportação personalizada concluída com sucesso! {len(df)} registros exportados."
+                    ], color="success"))
             
         except Exception as e:
-            return dbc.Alert([
-                html.I(className="fas fa-exclamation-triangle me-2"),
-                f"Erro na exportação personalizada: {str(e)}"
-            ], color="danger")
+            return (dash.no_update,
+                   dbc.Alert([
+                       html.I(className="fas fa-exclamation-triangle me-2"),
+                       f"Erro na exportação personalizada: {str(e)}"
+                   ], color="danger"))
 
     @app.callback(
         Output("report-output", "children"),
