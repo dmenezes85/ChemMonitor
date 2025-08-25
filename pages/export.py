@@ -104,7 +104,10 @@ def create_export():
                                 ], id="export-excel-btn", color="success", outline=True, className="w-100 mb-2")
                             ], width=4)
                         ]),
-                        html.Div(id="export-output", className="mt-3")
+                        html.Div(id="export-output", className="mt-3"),
+                        dcc.Download(id="download-csv"),
+                        dcc.Download(id="download-json"),  
+                        dcc.Download(id="download-excel")
                     ])
                 ], className="shadow-sm")
             ], width=12)
@@ -200,7 +203,10 @@ def register_export_callbacks(app):
     """Register callbacks for the export page"""
     
     @app.callback(
-        Output("export-output", "children"),
+        [Output("download-csv", "data"),
+         Output("download-json", "data"),
+         Output("download-excel", "data"),
+         Output("export-output", "children")],
         [Input("export-csv-btn", "n_clicks"),
          Input("export-json-btn", "n_clicks"),
          Input("export-excel-btn", "n_clicks")],
@@ -209,7 +215,7 @@ def register_export_callbacks(app):
     def export_data(btn_csv, btn_json, btn_excel):
         ctx = dash.callback_context
         if not ctx.triggered:
-            return ""
+            return dash.no_update, dash.no_update, dash.no_update, ""
         
         button_id = ctx.triggered[0]['prop_id'].split('.')[0]
         
@@ -218,10 +224,11 @@ def register_export_callbacks(app):
             df = data_manager.get_all_data()
             
             if df.empty:
-                return dbc.Alert([
-                    html.I(className="fas fa-exclamation-triangle me-2"),
-                    "Nenhum dado disponível para exportação"
-                ], color="warning")
+                return (dash.no_update, dash.no_update, dash.no_update, 
+                       dbc.Alert([
+                           html.I(className="fas fa-exclamation-triangle me-2"),
+                           "Nenhum dado disponível para exportação"
+                       ], color="warning"))
             
             # Generate filename with timestamp
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -229,41 +236,45 @@ def register_export_callbacks(app):
             if button_id == "export-csv-btn":
                 # Convert to CSV
                 csv_string = df.to_csv(index=False)
-                csv_bytes = io.BytesIO(csv_string.encode())
                 
-                return dcc.send_bytes(
-                    csv_bytes.getvalue(),
-                    f"process_data_{timestamp}.csv"
-                )
+                return (dcc.send_data_frame(df.to_csv, f"process_data_{timestamp}.csv", index=False),
+                        dash.no_update, 
+                        dash.no_update,
+                        dbc.Alert([
+                            html.I(className="fas fa-check-circle me-2"),
+                            f"Arquivo CSV exportado com sucesso! {len(df)} registros exportados."
+                        ], color="success"))
                 
             elif button_id == "export-json-btn":
                 # Convert to JSON
                 json_string = df.to_json(orient='records', date_format='iso')
-                json_bytes = io.BytesIO(json_string.encode())
                 
-                return dcc.send_bytes(
-                    json_bytes.getvalue(),
-                    f"process_data_{timestamp}.json"
-                )
+                return (dash.no_update,
+                        dcc.send_string(json_string, f"process_data_{timestamp}.json"),
+                        dash.no_update,
+                        dbc.Alert([
+                            html.I(className="fas fa-check-circle me-2"),
+                            f"Arquivo JSON exportado com sucesso! {len(df)} registros exportados."
+                        ], color="success"))
                 
             elif button_id == "export-excel-btn":
                 # Convert to Excel
-                output = io.BytesIO()
-                with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                    df.to_excel(writer, index=False, sheet_name='ProcessData')
-                output.seek(0)
-                
-                return dcc.send_bytes(
-                    output.getvalue(),
-                    f"process_data_{timestamp}.xlsx"
-                )
+                return (dash.no_update,
+                        dash.no_update,
+                        dcc.send_data_frame(df.to_excel, f"process_data_{timestamp}.xlsx", index=False, sheet_name='ProcessData'),
+                        dbc.Alert([
+                            html.I(className="fas fa-check-circle me-2"),
+                            f"Arquivo Excel exportado com sucesso! {len(df)} registros exportados."
+                        ], color="success"))
                 
         except Exception as e:
-            return dbc.Alert([
-                html.I(className="fas fa-exclamation-triangle me-2"),
-                f"Erro na exportação: {str(e)}"
-            ], color="danger")
-        return ""
+            return (dash.no_update, dash.no_update, dash.no_update,
+                   dbc.Alert([
+                       html.I(className="fas fa-exclamation-triangle me-2"),
+                       f"Erro na exportação: {str(e)}"
+                   ], color="danger"))
+        
+        return dash.no_update, dash.no_update, dash.no_update, ""
 
     @app.callback(
         Output("export-custom-output", "children"),
