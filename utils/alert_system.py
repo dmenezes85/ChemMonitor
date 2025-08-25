@@ -133,6 +133,33 @@ class AlertSystem:
         except Exception as e:
             print(f"Error saving alert config for {parameter}: {e}")
             return False
+
+    def update_alert_config(self, parameter: str, min_val: float, max_val: float, cooldown: int, enabled: bool) -> bool:
+        """
+        Update alert configuration for a parameter with individual values.
+        
+        Args:
+            parameter: Parameter name
+            min_val: Minimum threshold value  
+            max_val: Maximum threshold value
+            cooldown: Cooldown period in minutes
+            enabled: Whether the alert is enabled
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            config = {
+                'min': min_val if min_val is not None else None,
+                'max': max_val if max_val is not None else None,
+                'cooldown': cooldown,
+                'enabled': enabled,
+                'last_updated': datetime.now().isoformat()
+            }
+            return self.save_alert_config(parameter, config)
+        except Exception as e:
+            print(f"Error updating alert config for {parameter}: {e}")
+            return False
     
     def get_alert_config(self, parameter: str) -> Optional[Dict[str, Any]]:
         """

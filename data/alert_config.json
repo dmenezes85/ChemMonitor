@@ -1,15 +1,16 @@
 {
   "metadata": {
     "created_at": "2025-08-09T01:49:10.811215",
-    "last_updated": "2025-08-09T01:49:10.811228",
+    "last_updated": "2025-08-25T14:11:12.301305",
     "version": "1.0"
   },
   "parameters": {
     "temperature": {
+      "min": 65,
+      "max": 80,
+      "cooldown": 5,
       "enabled": true,
-      "min_value": 60,
-      "max_value": 90,
-      "cooldown_minutes": 5
+      "last_updated": "2025-08-25T14:11:12.301185"
     },
     "pressure": {
       "enabled": true,
