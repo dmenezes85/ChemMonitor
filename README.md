@@ -4,6 +4,21 @@
 
 This repository contains a Dash-based chemical process monitoring dashboard that provides real-time visualization, historical analysis, alert management, and data export capabilities for industrial chemical processes. The application is designed to monitor critical parameters like temperature, pressure, pH, flow rate, and concentration, with comprehensive alerting and reporting features. Recently migrated from Streamlit to Dash for better performance and interactivity.
 
+## Recent Fixes Applied
+
+### Duplicate Callback Outputs Resolution
+
+This application had several "Duplicate callback outputs" errors that have been resolved:
+
+1. **Dashboard Page** - Removed duplicate callback for realtime chart updates
+2. **Data Input Page** - Combined duplicate callbacks using `dash.callback_context`:
+   - Upload handling callbacks
+   - Simulation data generation callbacks
+   - Clear data and status display callbacks
+3. **Historical Analysis Page** - Removed duplicate callback registration
+
+See `FIXES_SUMMARY.md` for detailed information about each fix.
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
@@ -27,10 +42,11 @@ Preferred communication style: Simple, everyday language.
 ```
 app.py                      # Main dashboard application
 pages/
-├── 1_Data_Input.py        # Data input and file upload
-├── 2_Historical_Analysis.py # Historical data analysis
-├── 3_Alerts_Config.py     # Alert configuration
-└── 4_Data_Export.py       # Data export and reporting
+├── dashboard.py           # Main dashboard display
+├── data_input.py          # Data input and file upload
+├── historical.py          # Historical data analysis
+├── alerts.py              # Alert configuration
+└── export.py              # Data export and reporting
 utils/
 ├── data_manager.py        # Data storage and retrieval
 ├── alert_system.py        # Alert management
@@ -120,7 +136,7 @@ utils/
 
 ### Local Development
 - **Requirements**: Python 3.7+ with required packages
-- **Command**: `python app.py`
+- **Command**: `python run.py`
 - **Port**: Port 5000 for Replit compatibility
 
 ### Production Considerations

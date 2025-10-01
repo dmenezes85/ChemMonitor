@@ -137,7 +137,7 @@ class DataManager:
             print(f"Error retrieving all data: {e}")
             return pd.DataFrame()
     
-    def get_latest_data(self, n: int = 1) -> pd.DataFrame:
+    def get_latest_data(self, n: int = 100) -> pd.DataFrame:
         """
         Get the latest n data points.
         
@@ -184,13 +184,13 @@ class DataManager:
             print(f"Error retrieving data by time range: {e}")
             return pd.DataFrame()
     
-    def get_data_by_date_range(self, start_date: datetime, end_date: datetime) -> pd.DataFrame:
+    def get_data_by_date_range(self, start_date, end_date) -> pd.DataFrame:
         """
         Get data within a specific date range.
         
         Args:
-            start_date: Start of the date range
-            end_date: End of the date range
+            start_date: Start date (string or datetime)
+            end_date: End date (string or datetime)
             
         Returns:
             pd.DataFrame: Data within the date range
@@ -201,10 +201,16 @@ class DataManager:
             if all_data.empty or 'timestamp' not in all_data.columns:
                 return pd.DataFrame()
             
+            # Convert string dates to datetime if needed
+            if isinstance(start_date, str):
+                start_date = pd.to_datetime(start_date)
+            if isinstance(end_date, str):
+                end_date = pd.to_datetime(end_date) + pd.Timedelta(days=1)  # Include full end day
+            
             mask = (all_data['timestamp'] >= start_date) & (all_data['timestamp'] <= end_date)
             filtered_data = all_data[mask]
             
-            return filtered_data
+            return filtered_data.sort_values('timestamp') if not filtered_data.empty else filtered_data
             
         except Exception as e:
             print(f"Error retrieving data by date range: {e}")
@@ -235,6 +241,20 @@ class DataManager:
         except Exception as e:
             print(f"Error retrieving parameter data: {e}")
             return pd.Series()
+    
+    def clear_all_data(self) -> bool:
+        """
+        Clear all data and reset the data file.
+        
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            self._initialize_data_file()
+            return True
+        except Exception as e:
+            print(f"Error clearing data: {e}")
+            return False
     
     def get_data_summary(self) -> Dict[str, Any]:
         """
